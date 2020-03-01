@@ -1,6 +1,7 @@
 const chalk = require('chalk')
 const StoryblokClient = require('storyblok-js-client')
 const pSeries = require('p-series')
+const fileUploader = require('./fileUploader')
 
 const SyncSpaces = {
   targetComponents: [],
@@ -11,7 +12,26 @@ const SyncSpaces = {
     this.sourceSpaceId = options.sourceSpaceId
     this.targetSpaceId = options.targetSpaceId
     this.sourceClient = options.sourceClient
-	this.targetClient = options.targetClient
+    this.targetClient = options.targetClient
+  },
+
+  async syncAssets() {
+    var all = await this.sourceClient.getAll(`spaces/${this.sourceSpaceId}/assets`)
+
+    for (let i = 0; i < all.length; i++) {
+      let fileparts = all[i].filename.split('/')
+      let filename = fileparts[fileparts.length-1]
+      console.log(chalk.green('✓') + ' Starting transfer of asset ' + filename)
+
+      this.targetClient.post('spaces/' + this.targetSpaceId + '/assets', {
+        filename: filename
+      })
+      .then((response) => {
+        fileUploader(all[i].filename, response.data, function(file) {
+          console.log(chalk.green('✓') + ' File ' + file + ' uploaded')
+        })
+      })
+    }
   },
 
   async syncStories () {

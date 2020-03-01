@@ -10,7 +10,9 @@
   "license": "ISC",
   "dependencies": {
     "chalk": "^3.0.0",
+    "form-data": "^3.0.0",
     "p-series": "^2.1.0",
+    "request": "^2.88.2",
     "storyblok-js-client": "^2.0.12"
   }
 }
