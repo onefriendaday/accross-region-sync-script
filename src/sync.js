@@ -21,16 +21,25 @@ const SyncSpaces = {
     for (let i = 0; i < all.length; i++) {
       let fileparts = all[i].filename.split('/')
       let filename = fileparts[fileparts.length-1]
+      let folder = fileparts[fileparts.length-2]
       console.log(chalk.green('✓') + ' Starting transfer of asset ' + filename)
 
-      this.targetClient.post('spaces/' + this.targetSpaceId + '/assets', {
-        filename: filename
-      })
-      .then((response) => {
+      try {
+        let response = await this.targetClient.post('spaces/' + this.targetSpaceId + '/assets', {
+          filename: filename,
+          ext_id: folder + '/' + filename
+        })
+
         fileUploader(all[i].filename, response.data, function(file) {
           console.log(chalk.green('✓') + ' File ' + file + ' uploaded')
         })
-      })
+      } catch (e) {
+        if (e.response.status === 422) {
+          console.log('This asset already exists')
+        } else {
+          throw e
+        }
+      }
     }
   },
 
