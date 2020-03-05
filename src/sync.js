@@ -6,6 +6,7 @@ const fileUploader = require('./fileUploader')
 const SyncSpaces = {
   targetComponents: [],
   sourceComponents: [],
+  assetMapping: {},
 
   init (options) {
     console.log(chalk.green('✓') + ' Loading options')
@@ -17,9 +18,12 @@ const SyncSpaces = {
 
   async syncAssets() {
     var all = await this.sourceClient.getAll(`spaces/${this.sourceSpaceId}/assets`)
+    this.assetMapping = {}
 
     for (let i = 0; i < all.length; i++) {
-      let fileparts = all[i].filename.split('/')
+      let fullFilename = all[i].filename
+      let cleanFilename = fullFilename.replace('https://s3.amazonaws.com/', '//')
+      let fileparts = fullFilename.split('/')
       let filename = fileparts[fileparts.length-1]
       let folder = fileparts[fileparts.length-2]
       console.log(chalk.green('✓') + ' Starting transfer of asset ' + filename)
@@ -29,6 +33,7 @@ const SyncSpaces = {
           filename: filename,
           ext_id: folder + '/' + filename
         })
+        this.assetMapping[cleanFilename] = response.data.public_url
 
         fileUploader(all[i].filename, response.data, function(file) {
           console.log(chalk.green('✓') + ' File ' + file + ' uploaded')
@@ -36,10 +41,51 @@ const SyncSpaces = {
       } catch (e) {
         if (e.response.status === 422) {
           console.log('This asset already exists')
+          this.assetMapping[cleanFilename] = e.response.data.filename
         } else {
           throw e
         }
       }
+    }
+  },
+
+  replaceAssets(content) {
+    var traverse = (jtree) => {
+      if (jtree.constructor === String) {
+        for (var sourceImg in this.assetMapping) {
+          jtree = jtree.replace(sourceImg, this.assetMapping[sourceImg])
+          console.log(jtree)
+        }
+      } else if (jtree.constructor === Array) {
+        for (var item = 0; item < jtree.length; item++) {
+          traverse(jtree[item])
+        }
+      } else if (jtree.constructor === Object) {
+        for (var treeItem in jtree) {
+          traverse(jtree[treeItem])
+        }
+      }
+    }
+
+    traverse(content)
+    return content
+  },
+
+  async syncRelinkAssets () {
+    var all = await this.targetClient.getAll(`spaces/${this.targetSpaceId}/stories`, {
+      story_only: 1
+    })
+
+    for (let i = 0; i < all.length; i++) {
+      var resp = await this.targetClient.get(`spaces/${this.targetSpaceId}/stories/${all[i].id}`)
+      var content = this.replaceAssets(resp.data.story.content)
+
+      await this.targetClient.put('spaces/' + this.targetSpaceId + '/stories/' + resp.data.story.id, {
+        story: {
+          content: resp.data.story.content
+        }
+      })
+      console.log(chalk.green('✓') + ' Updated ' + resp.data.story.full_slug)
     }
   },
 
