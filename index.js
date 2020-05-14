@@ -8,8 +8,8 @@ const targetClient = new StoryblokClient({
 }, 'https://8xhrfleis8.execute-api.cn-north-1.amazonaws.com.cn/live/v1')
 
 Sync(['Assets', 'Components', 'Folders', 'Stories'], {
-  sourceSpaceId: 76368,
-  targetSpaceId: 141,
+  sourceSpaceId: SOURCE_SPACE_ID,
+  targetSpaceId: TARGET_SPACE_ID,
   sourceClient: sourceClient,
   targetClient: targetClient
 })
